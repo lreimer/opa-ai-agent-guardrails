@@ -1,0 +1,12 @@
+{
+  "agent": "GitHub Copilot",
+  "server": "github",
+  "tool": "mcp_github_mcp_se_create_or_update_file",
+  "arguments": {
+    "owner": "example",
+    "repo": "widgets",
+    "branch": "main",
+    "path": "README.md"
+  },
+  "user_approved": true
+}

@@ -37,9 +37,13 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
+# OPA WASM bundles
+build/wasm/
+
 # Dependency directories
 node_modules/
 jspm_packages/
+.venv/
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

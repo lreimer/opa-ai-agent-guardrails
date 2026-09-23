@@ -1,0 +1,12 @@
+[project]
+name = "opa-ai-agent-guardrails"
+version = "0.1.0"
+description = "Demo repository for AI agent guardrails using OPA"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "opa-py-wasm>=0.3.2",
+]
+
+[tool.uv]
+package = false

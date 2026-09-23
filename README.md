@@ -2,4 +2,3 @@
 
 Demo repository for AI agent guardrails using OPA.
 
-

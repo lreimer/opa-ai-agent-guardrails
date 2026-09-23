@@ -1,0 +1,9 @@
+{
+  "agent": "GitHub Copilot",
+  "server": "github",
+  "tool": "mcp_github_mcp_se_search_issues",
+  "arguments": {
+    "query": "repo:example/widgets is:open label:bug"
+  },
+  "user_approved": false
+}
