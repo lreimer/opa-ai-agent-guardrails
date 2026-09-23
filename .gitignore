@@ -37,6 +37,9 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
+# Rust build output
+target/
+
 # OPA WASM bundles
 build/wasm/
 

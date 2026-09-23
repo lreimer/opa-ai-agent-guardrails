@@ -1,7 +1,10 @@
 OPA ?= opa
 UV ?= uv
+CARGO ?= cargo
 WASM_DIR := build/wasm
 REGO_POLICIES := $(shell find policy -name '*.rego' -type f)
+RUST_POLICY_BUNDLE := $(WASM_DIR)/github_mcp.tar.gz
+RUST_POLICY_ENTRYPOINT := coding/github_mcp/allow
 
 CRM_POLICY := policy/crm/claims_agent/claims_agent_crm.rego
 CRM_QUERY := data.crm.claims_agent.allow
@@ -20,13 +23,30 @@ GITHUB_MCP_READ_ALLOWED_INPUT := policy/testdata/github_mcp_read_allowed.json
 GITHUB_MCP_WRITE_ALLOWED_INPUT := policy/testdata/github_mcp_write_allowed.json
 GITHUB_MCP_DENIED_INPUT := policy/testdata/github_mcp_denied.json
 
-.PHONY: python-sync python-check eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm test test-crm test-authz test-github-mcp
+.PHONY: python-sync python-check rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm test test-crm test-authz test-github-mcp
 
 python-sync:
 	$(UV) sync
 
 python-check: python-sync
 	$(UV) run python -c "from opapywasm import OpaWasmPolicy; print('opa-py-wasm ready')"
+
+rust-build:
+	$(CARGO) build --bin check-policy
+
+rust-check-policy-allowed: compile-wasm
+	$(CARGO) run --quiet --bin check-policy -- $(RUST_POLICY_BUNDLE) $(RUST_POLICY_ENTRYPOINT) < $(GITHUB_MCP_READ_ALLOWED_INPUT)
+
+rust-check-policy-write: compile-wasm
+	$(CARGO) run --quiet --bin check-policy -- $(RUST_POLICY_BUNDLE) $(RUST_POLICY_ENTRYPOINT) < $(GITHUB_MCP_WRITE_ALLOWED_INPUT)
+
+rust-check-policy-denied: compile-wasm
+	@$(CARGO) run --quiet --bin check-policy -- $(RUST_POLICY_BUNDLE) $(RUST_POLICY_ENTRYPOINT) < $(GITHUB_MCP_DENIED_INPUT) 2>/dev/null; \
+	status=$$?; \
+	test $$status -eq 2
+
+test-rust-hook: rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied
+	@echo "Rust policy hook tests passed"
 
 eval-allowed:
 	$(OPA) eval --format pretty --data $(CRM_POLICY) --input $(CRM_ALLOWED_INPUT) $(CRM_QUERY)
