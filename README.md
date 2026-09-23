@@ -1,2 +1,5 @@
-# opa-ai-agent-guardrails
-Demo repository for AI agent guardrails using OPA
+# Open Policy Agent AI Guardrails
+
+Demo repository for AI agent guardrails using OPA.
+
+

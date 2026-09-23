@@ -1,0 +1,9 @@
+{
+  "user": {
+    "id": "user-100",
+    "role": "claims_adjuster"
+  },
+  "document": {
+    "owner_id": "user-200"
+  }
+}

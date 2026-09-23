@@ -1,0 +1,4 @@
+{
+  "agent": "Claims Agent",
+  "tool": "crm.get_claim"
+}

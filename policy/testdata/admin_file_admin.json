@@ -1,0 +1,9 @@
+{
+  "user": {
+    "id": "user-100",
+    "role": "admin"
+  },
+  "document": {
+    "owner_id": "user-200"
+  }
+}
