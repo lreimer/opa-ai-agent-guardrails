@@ -1,0 +1,248 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claims-agent-envoy-config
+data:
+  envoy.yaml: |
+    admin:
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 9901
+    static_resources:
+      listeners:
+        - name: crm_listener
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 10000
+          filter_chains:
+            - filters:
+                - name: envoy.filters.network.http_connection_manager
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                    stat_prefix: crm_ingress
+                    normalize_path: true
+                    merge_slashes: true
+                    path_with_escaped_slashes_action: REJECT_REQUEST
+                    route_config:
+                      name: crm_routes
+                      virtual_hosts:
+                        - name: crm_backend
+                          domains: ["*"]
+                          routes:
+                            - match:
+                                prefix: "/"
+                              route:
+                                cluster: crm_backend
+                    http_filters:
+                      - name: envoy.filters.http.ext_authz
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                          transport_api_version: V3
+                          failure_mode_allow: false
+                          status_on_error:
+                            code: ServiceUnavailable
+                          grpc_service:
+                            timeout: 0.5s
+                            envoy_grpc:
+                              cluster_name: opa_envoy
+                          authorization_request:
+                            allowed_headers:
+                              patterns:
+                                - exact: x-agent-name
+                                - exact: x-mcp-tool
+                      - name: envoy.filters.http.router
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+      clusters:
+        - name: crm_backend
+          type: STATIC
+          connect_timeout: 1s
+          load_assignment:
+            cluster_name: crm_backend
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: 127.0.0.1
+                          port_value: 8080
+        - name: opa_envoy
+          type: STATIC
+          connect_timeout: 0.25s
+          typed_extension_protocol_options:
+            envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+              "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+              explicit_http_config:
+                http2_protocol_options: {}
+          load_assignment:
+            cluster_name: opa_envoy
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: 127.0.0.1
+                          port_value: 9191
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claims-agent-opa-config
+data:
+  opa-config.yaml: |
+    plugins:
+      envoy_ext_authz_grpc:
+        addr: 0.0.0.0:9191
+        path: crm/claims_agent/allow
+        dry-run: false
+        enable-reflection: false
+        skip-request-body-parse: true
+    decision_logs:
+      console: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claims-agent-policy
+data:
+  claims_agent_crm.rego: |
+    package crm.claims_agent
+
+    import rego.v1
+
+    allowed_tools := {
+        "crm.get_customer",
+        "crm.get_claim",
+        "crm.list_customer_claims",
+        "crm.search_claims",
+        "crm.add_claim_note",
+        "crm.update_claim_status",
+    }
+
+    http_request := object.get(object.get(object.get(input, "attributes", {}), "request", {}), "http", {})
+    request_headers := object.get(http_request, "headers", {})
+    agent_name := object.get(input, "agent", object.get(request_headers, "x-agent-name", ""))
+    tool_name := object.get(input, "tool", object.get(request_headers, "x-mcp-tool", ""))
+
+    default allow := false
+
+    allow if {
+        agent_name == "Claims Agent"
+        tool_name in allowed_tools
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claims-agent-crm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: claims-agent-crm
+  template:
+    metadata:
+      labels:
+        app: claims-agent-crm
+    spec:
+      containers:
+        - name: crm-backend
+          image: hashicorp/http-echo:1.0
+          args:
+            - -listen=:8080
+            - -text=CRM request accepted
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          ports:
+            - name: backend
+              containerPort: 8080
+        - name: envoy
+          image: envoyproxy/envoy:v1.35-latest
+          args:
+            - -c
+            - /etc/envoy/envoy.yaml
+          ports:
+            - name: proxy
+              containerPort: 10000
+            - name: envoy-admin
+              containerPort: 9901
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: envoy-admin
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /etc/envoy
+              readOnly: true
+        - name: opa-envoy
+          image: openpolicyagent/opa:1.20.2-envoy
+          args:
+            - run
+            - --server
+            - --addr=127.0.0.1:8181
+            - --diagnostic-addr=0.0.0.0:8282
+            - --config-file=/config/opa-config.yaml
+            - /policy/claims_agent_crm.rego
+          ports:
+            - name: opa-grpc
+              containerPort: 9191
+            - name: opa-diagnostic
+              containerPort: 8282
+          livenessProbe:
+            httpGet:
+              path: /health?plugins
+              port: opa-diagnostic
+          readinessProbe:
+            httpGet:
+              path: /health?plugins
+              port: opa-diagnostic
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: opa-config
+              mountPath: /config
+              readOnly: true
+            - name: policy
+              mountPath: /policy
+              readOnly: true
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: claims-agent-envoy-config
+        - name: opa-config
+          configMap:
+            name: claims-agent-opa-config
+        - name: policy
+          configMap:
+            name: claims-agent-policy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claims-agent-crm
+spec:
+  selector:
+    app: claims-agent-crm
+  ports:
+    - name: http
+      port: 80
+      targetPort: proxy

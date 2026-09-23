@@ -42,6 +42,7 @@ target/
 
 # OPA WASM bundles
 build/wasm/
+build/*.wasm
 
 # Dependency directories
 node_modules/

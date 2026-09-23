@@ -1,0 +1,10 @@
+plugins:
+  envoy_ext_authz_grpc:
+    addr: 0.0.0.0:9191
+    path: crm/claims_agent/allow
+    dry-run: false
+    enable-reflection: false
+    skip-request-body-parse: true
+
+decision_logs:
+  console: true

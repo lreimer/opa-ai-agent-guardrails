@@ -1,0 +1,14 @@
+{
+  "attributes": {
+    "request": {
+      "http": {
+        "method": "POST",
+        "path": "/mcp/call",
+        "headers": {
+          "x-agent-name": "Claims Agent",
+          "x-mcp-tool": "crm.get_claim"
+        }
+      }
+    }
+  }
+}

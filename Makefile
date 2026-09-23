@@ -10,6 +10,7 @@ CRM_POLICY := policy/crm/claims_agent/claims_agent_crm.rego
 CRM_QUERY := data.crm.claims_agent.allow
 CRM_ALLOWED_INPUT := policy/testdata/claims_agent_crm_allowed.json
 CRM_DENIED_INPUT := policy/testdata/claims_agent_crm_denied.json
+CRM_ENVOY_ALLOWED_INPUT := policy/testdata/claims_agent_crm_envoy_allowed.json
 
 AUTHZ_POLICY := policy/authz/admin_file.rego
 AUTHZ_QUERY := data.authz.allow
@@ -23,7 +24,7 @@ GITHUB_MCP_READ_ALLOWED_INPUT := policy/testdata/github_mcp_read_allowed.json
 GITHUB_MCP_WRITE_ALLOWED_INPUT := policy/testdata/github_mcp_write_allowed.json
 GITHUB_MCP_DENIED_INPUT := policy/testdata/github_mcp_denied.json
 
-.PHONY: python-sync python-check rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm test test-crm test-authz test-github-mcp
+.PHONY: python-sync python-check rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm extract-wasm test test-crm test-authz test-github-mcp
 
 python-sync:
 	$(UV) sync
@@ -82,12 +83,21 @@ compile-wasm:
 		$(OPA) build --target wasm --entrypoint "$$entrypoint" --output "$(WASM_DIR)/$$bundle" "$$policy"; \
 	done
 
+extract-wasm: compile-wasm
+	@set -e; for bundle in $(WASM_DIR)/*.tar.gz; do \
+		policy_name=$$(basename "$$bundle" .tar.gz); \
+		output="build/$$policy_name.wasm"; \
+		echo "Extracting $$bundle -> $$output"; \
+		tar -xOzf "$$bundle" /policy.wasm > "$$output"; \
+	done
+
 test: test-crm test-authz test-github-mcp
 	@echo "Policy tests passed"
 
 test-crm:
 	@test "$$($(OPA) eval --format raw --data $(CRM_POLICY) --input $(CRM_ALLOWED_INPUT) $(CRM_QUERY))" = "true"
 	@test "$$($(OPA) eval --format raw --data $(CRM_POLICY) --input $(CRM_DENIED_INPUT) $(CRM_QUERY))" = "false"
+	@test "$$($(OPA) eval --format raw --data $(CRM_POLICY) --input $(CRM_ENVOY_ALLOWED_INPUT) $(CRM_QUERY))" = "true"
 
 test-authz:
 	@test "$$($(OPA) eval --format raw --data $(AUTHZ_POLICY) --input $(AUTHZ_ADMIN_INPUT) $(AUTHZ_QUERY))" = "true"
