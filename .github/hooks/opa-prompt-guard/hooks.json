@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "uv run --quiet python .github/hooks/opa-prompt-guard/check_prompt.py",
+        "cwd": ".",
+        "timeoutSec": 15
+      }
+    ],
+    "userPromptTransformed": [
+      {
+        "type": "command",
+        "bash": "uv run --quiet python .github/hooks/opa-prompt-guard/check_prompt.py",
+        "cwd": ".",
+        "timeoutSec": 15
+      }
+    ]
+  }
+}

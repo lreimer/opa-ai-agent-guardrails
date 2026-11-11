@@ -72,6 +72,7 @@ Each policy directory contains a README describing its input and implemented gua
 | [authz/admin_file.rego](policy/authz/README.md) | Document access for admins and owners |
 | [crm/claims_agent](policy/crm/claims_agent/README.md) | CRM tool calls of an insurance claims agent, directly or via Envoy |
 | [coding/github_mcp](policy/coding/github_mcp/README.md) | GitHub MCP tool calls of coding agents |
+| [coding/copilot_prompt](policy/coding/copilot_prompt/README.md) | Prompts submitted to GitHub Copilot, via a Python hook |
 | [agents/clc26](policy/agents/clc26/README.md) | The CLC26 conference ADK agent |
 | [agents/qaware](policy/agents/qaware/README.md) | The QAware ADK agent, including the demo guardrails |
 

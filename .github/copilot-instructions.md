@@ -22,6 +22,8 @@ make test-authz
 make test-github-mcp
 make test-clc26-agent
 make test-qaware-agent
+make test-copilot-prompt
+make test-copilot-hook     # run the Copilot prompt hook against the WASM policy
 make test-rust-hook        # build and exercise the GitHub MCP WASM policy via Rust
 make compile-wasm          # compile all Rego policies to bundles
 make extract-wasm          # compile and extract WASM modules for the ADK agents

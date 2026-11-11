@@ -1,0 +1,3 @@
+{
+  "prompt": "Add a unit test for the CRM policy that covers the Envoy input and remove the stale build artifacts with rm -rf build/wasm."
+}
