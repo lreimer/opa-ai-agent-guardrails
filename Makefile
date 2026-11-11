@@ -1,6 +1,8 @@
 OPA ?= opa
 UV ?= uv
 CARGO ?= cargo
+ADK_AGENTS_DIR := agents
+ADK_WEB_PORT ?= 8000
 WASM_DIR := build/wasm
 REGO_POLICIES := $(shell find policy -name '*.rego' -type f)
 RUST_POLICY_BUNDLE := $(WASM_DIR)/github_mcp.tar.gz
@@ -24,13 +26,16 @@ GITHUB_MCP_READ_ALLOWED_INPUT := policy/testdata/github_mcp_read_allowed.json
 GITHUB_MCP_WRITE_ALLOWED_INPUT := policy/testdata/github_mcp_write_allowed.json
 GITHUB_MCP_DENIED_INPUT := policy/testdata/github_mcp_denied.json
 
-.PHONY: python-sync python-check rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm extract-wasm test test-crm test-authz test-github-mcp
+.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm extract-wasm test test-crm test-authz test-github-mcp
 
 python-sync:
 	$(UV) sync
 
 python-check: python-sync
 	$(UV) run python -c "from opapywasm import OpaWasmPolicy; print('opa-py-wasm ready')"
+
+adk-web: python-sync
+	$(UV) run adk web --port $(ADK_WEB_PORT) $(ADK_AGENTS_DIR)
 
 rust-build:
 	$(CARGO) build --bin check-policy
