@@ -5,11 +5,11 @@
 This repository demonstrates Open Policy Agent (OPA) guardrails across several runtimes:
 
 - `policy/` contains the Rego policies and `policy/testdata/` contains JSON inputs used to exercise them. Each policy's README documents its input shape and decisions.
-- `agents/` contains two Google ADK Python agents. Each app installs an `OpaWasmGuardrailsPlugin` that evaluates its policy before and after model and tool calls; policy evaluation failures deny the operation.
-- `build/wasm/` contains OPA bundles compiled from Rego. The ADK plugins load extracted `.wasm` files from `build/`. The Rust `check-policy` binary evaluates the GitHub MCP policy bundle, while `tools/` contains generic Node.js and Python hook examples.
+- `agents/` contains two Google ADK Python agents. CLC26 uses an `OpaWasmGuardrailsPlugin`; QAware uses the same WASM approach by default and can select an `OpaRestGuardrailsPlugin` with `QAWARE_OPA_BACKEND=rest`. Policy evaluation failures deny the operation.
+- `build/wasm/` contains OPA bundles compiled from Rego. The WASM plugins load extracted `.wasm` files from `build/`; the QAware REST plugin queries an OPA server. The Rust `check-policy` binary evaluates the GitHub MCP policy bundle, while `tools/` contains generic Node.js and Python hook examples.
 - `envoy/` demonstrates using the claims-agent policy with Envoy `ext_authz`.
 
-When changing a policy, keep its README, test fixtures, and any consuming plugin or hook consistent. Policy decisions are enforced at runtime through WASM as well as directly by `opa eval`.
+When changing a policy, keep its README, test fixtures, and any consuming plugin or hook consistent. Policy decisions are enforced at runtime through WASM, the OPA REST API, or directly by `opa eval`.
 
 ## Build and test
 
@@ -22,6 +22,7 @@ make test-authz
 make test-github-mcp
 make test-clc26-agent
 make test-qaware-agent
+make test-qaware-rest-plugin
 make test-copilot-prompt
 make test-copilot-hook     # run the Copilot prompt hook against the WASM policy
 make test-rust-hook        # build and exercise the GitHub MCP WASM policy via Rust
@@ -52,3 +53,4 @@ Use the corresponding package query and fixture for another policy. For QAware d
 - Keep Rego built-ins compatible with OPA's WASM target. A policy can pass `opa eval` yet fail when compiled or evaluated as WASM; validate changes through the relevant WASM-consuming path when changing WASM behavior.
 - QAware exposes an additional `deny_reasons` entrypoint. When changing its denial behavior, preserve the relationship between `allow`, `deny_reasons`, and the plugin's user-facing explanation.
 - Agent-specific model overrides are `CLC26_AGENT_MODEL` and `QAWARE_AGENT_MODEL`; the ADK web port can be set with `ADK_WEB_PORT`. The plugins also accept `OPA_POLICY_WASM` to select a policy module.
+- QAware's REST backend uses `QAWARE_OPA_URL` (default `http://127.0.0.1:8181`) and `QAWARE_OPA_TIMEOUT_SECONDS` (default `1.0`); the OPA server must load `policy/agents/qaware/qaware_agent.rego`.

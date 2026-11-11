@@ -41,7 +41,7 @@ COPILOT_PROMPT_QUERY := data.coding.copilot_prompt.allow
 COPILOT_PROMPT_TESTDATA := policy/testdata/copilot_prompt
 COPILOT_PROMPT_HOOK := .github/hooks/opa-prompt-guard/check_prompt.py
 
-.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied eval-qaware-reasons compile-wasm extract-wasm test test-crm test-authz test-github-mcp test-clc26-agent test-qaware-agent test-copilot-prompt test-copilot-hook
+.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied eval-qaware-reasons compile-wasm extract-wasm test test-crm test-authz test-github-mcp test-clc26-agent test-qaware-agent test-qaware-rest-plugin test-copilot-prompt test-copilot-hook
 
 python-sync:
 	$(UV) sync
@@ -148,6 +148,9 @@ test-qaware-agent:
 		actual=$$($(OPA) eval --format raw --data $(QAWARE_POLICY) --input "$$input" $(QAWARE_QUERY)); \
 		if [ "$$actual" != "$$expected" ]; then echo "FAIL $$input: expected $$expected, got $$actual"; exit 1; fi; \
 	done
+
+test-qaware-rest-plugin:
+	$(UV) run python -m unittest discover -s tests -p 'test_*.py'
 
 # Test inputs encode the expected decision in their file name: *_allowed.json or *_denied.json.
 test-copilot-prompt:

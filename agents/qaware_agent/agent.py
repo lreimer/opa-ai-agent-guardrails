@@ -8,9 +8,18 @@ from google.adk.tools import google_search
 from google.adk.tools.agent_tool import AgentTool
 
 from .opa_plugin import OpaWasmGuardrailsPlugin
+from .opa_rest_plugin import OpaRestGuardrailsPlugin
 from .tools import fetch_qaware_page, list_qaware_pages
 
 MODEL = os.getenv("QAWARE_AGENT_MODEL", "gemini-3.8-flash")
+OPA_BACKEND = os.getenv("QAWARE_OPA_BACKEND", "wasm").lower()
+
+if OPA_BACKEND == "wasm":
+    guardrails_plugin = OpaWasmGuardrailsPlugin()
+elif OPA_BACKEND == "rest":
+    guardrails_plugin = OpaRestGuardrailsPlugin()
+else:
+    raise ValueError("QAWARE_OPA_BACKEND must be either 'wasm' or 'rest'")
 
 # Gemini built-in search cannot be mixed with function tools in one agent, so it is wrapped.
 web_search_agent = Agent(
@@ -68,5 +77,5 @@ How to answer:
 app = App(
     name="qaware_agent",
     root_agent=root_agent,
-    plugins=[OpaWasmGuardrailsPlugin()],
+    plugins=[guardrails_plugin],
 )

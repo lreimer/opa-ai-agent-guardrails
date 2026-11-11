@@ -40,15 +40,24 @@ cp agents/qaware_agent/.env.example agents/qaware_agent/.env   # add your Gemini
 make adk-web                                                   # open http://localhost:8000 and select qaware_agent
 ```
 
-Use `QAWARE_AGENT_MODEL` to override the Gemini model.
+Use `QAWARE_AGENT_MODEL` to override the Gemini model. The QAware agent uses its local WASM policy by default; to
+demonstrate the OPA REST API instead, start the OPA server and set `QAWARE_OPA_BACKEND=rest` in
+`agents/qaware_agent/.env`:
+
+```bash
+opa run --server --addr 127.0.0.1:8181 policy/agents/qaware/qaware_agent.rego
+```
+
+Set `QAWARE_OPA_URL` if the server is listening elsewhere. This backend switch affects only QAware; CLC26 continues
+to use WASM.
 
 ### Demo Guardrails
 
 The [qaware_agent.rego](policy/agents/qaware/qaware_agent.rego) policy collects every violation as a human readable
-message in `deny_reasons`, and `allow` is true only if there is none. `make compile-wasm` adds a `deny_reasons`
-WASM entrypoint for every policy that defines one, and the agent's plugin shows these reasons instead of a generic
-block message. Besides the classic guardrails (prompt injection, secrets, tool and host allow-lists), the policy
-contains a few rules that are fun to demo live:
+message in `deny_reasons`, and `allow` is true only if there is none. The agent plugin shows these reasons instead
+of a generic block message with either the default WASM backend or the optional REST backend. Besides the classic
+guardrails (prompt injection, secrets, tool and host allow-lists), the policy contains a few rules that are fun to
+demo live:
 
 | Guardrail | Phase | Try it with |
 |-----------|-------|-------------|
@@ -60,7 +69,8 @@ contains a few rules that are fun to demo live:
 | Rickroll protection | all phases | "Is https://youtu.be/dQw4w9WgXcQ a good intro video?" |
 
 Run `make test-qaware-agent` to test the policy (test inputs in [policy/testdata](policy/testdata) are named
-`qaware_agent_*_allowed.json` or `qaware_agent_*_denied.json`), and show the reasons for a denied input with
+`qaware_agent_*_allowed.json` or `qaware_agent_*_denied.json`), `make test-qaware-rest-plugin` to test the REST
+client behavior, and show the reasons for a denied input with
 `make eval-qaware-reasons QAWARE_INPUT=policy/testdata/qaware_agent_response_commitment_denied.json`.
 
 ## Policies

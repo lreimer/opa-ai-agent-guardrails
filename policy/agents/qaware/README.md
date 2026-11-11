@@ -1,9 +1,10 @@
 # QAware Agent Guardrails
 
-[qaware_agent.rego](qaware_agent.rego) guards the [QAware agent](../../../agents/qaware_agent). The policy is
-compiled to WASM and evaluated by the ADK [OpaWasmGuardrailsPlugin](../../../agents/qaware_agent/opa_plugin.py)
-before and after every LLM and tool invocation, including the wrapped web search agent. Evaluation errors fail
-closed.
+[qaware_agent.rego](qaware_agent.rego) guards the [QAware agent](../../../agents/qaware_agent) before and after every
+LLM and tool invocation, including the wrapped web search agent. The default ADK
+[OpaWasmGuardrailsPlugin](../../../agents/qaware_agent/opa_plugin.py) evaluates the policy locally. The agent also
+has an [OpaRestGuardrailsPlugin](../../../agents/qaware_agent/opa_rest_plugin.py) variant that evaluates it through
+OPA's REST API. Both fail closed on evaluation errors.
 
 Every guardrail adds a human readable message to `deny_reasons`, and `allow` is `true` only if the phase is known
 and there is no reason to deny. The plugin evaluates both entrypoints and shows the reasons to the user, e.g.
@@ -12,6 +13,27 @@ and there is no reason to deny. The plugin evaluates both entrypoints and shows 
 - Package: `agents.qaware`
 - Queries: `data.agents.qaware.allow`, `data.agents.qaware.deny_reasons`
 - WASM entrypoints: `agents/qaware/allow`, `agents/qaware/deny_reasons`
+- REST endpoints: `/v1/data/agents/qaware/allow`, `/v1/data/agents/qaware/deny_reasons`
+
+## REST API Variant
+
+Start OPA with this policy:
+
+```bash
+opa run --server --addr 127.0.0.1:8181 policy/agents/qaware/qaware_agent.rego
+```
+
+Set these variables in `agents/qaware_agent/.env` to select the REST plugin instead of the default WASM plugin:
+
+```bash
+QAWARE_OPA_BACKEND=rest
+QAWARE_OPA_URL=http://127.0.0.1:8181
+```
+
+The REST plugin posts the same phase-specific input document to the `allow` endpoint. If denied, it requests
+`deny_reasons` and includes the messages in the blocked model response or tool result. Set
+`QAWARE_OPA_TIMEOUT_SECONDS` to adjust the request timeout (default: `1.0`). A failed request, non-JSON response,
+missing result, or decision other than boolean `true` denies the operation.
 
 ## Input
 
@@ -55,12 +77,13 @@ and there is no reason to deny. The plugin evaluates both entrypoints and shows 
 
 ```bash
 make test-qaware-agent
+make test-qaware-rest-plugin
 make eval-qaware-reasons QAWARE_INPUT=policy/testdata/qaware_agent_response_commitment_denied.json
 ```
 
 Test inputs are named `qaware_agent_*_allowed.json` or `qaware_agent_*_denied.json` in
 [policy/testdata](../../testdata), and the test target derives the expected decision from the file name.
 
-Only use built-in functions that OPA implements natively in WASM (e.g. `regex.find_all_string_submatch_n`
-instead of `regex.find_n`), otherwise `opa eval` succeeds but the WASM evaluation fails and the plugin denies
-every call.
+The WASM variant requires built-in functions that OPA implements natively in WASM (e.g.
+`regex.find_all_string_submatch_n` instead of `regex.find_n`), otherwise `opa eval` succeeds but WASM evaluation
+fails and the plugin denies every call.
