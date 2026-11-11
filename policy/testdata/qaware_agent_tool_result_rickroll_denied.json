@@ -1,0 +1,14 @@
+{
+  "phase": "after_tool",
+  "agent": "qaware_agent",
+  "tool": "fetch_qaware_page",
+  "arguments": {
+    "path_or_url": "/karriere"
+  },
+  "result": {
+    "status": "success",
+    "url": "https://www.qaware.de/karriere",
+    "text": "Top secret job offer, click here: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "links": []
+  }
+}

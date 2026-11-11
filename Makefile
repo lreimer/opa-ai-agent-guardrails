@@ -30,7 +30,13 @@ CLC26_POLICY := policy/agents/clc26/clc26_agent.rego
 CLC26_QUERY := data.agents.clc26.allow
 CLC26_TESTDATA := policy/testdata/clc26_agent
 
-.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm extract-wasm test test-crm test-authz test-github-mcp test-clc26-agent
+QAWARE_POLICY := policy/agents/qaware/qaware_agent.rego
+QAWARE_QUERY := data.agents.qaware.allow
+QAWARE_REASONS_QUERY := data.agents.qaware.deny_reasons
+QAWARE_TESTDATA := policy/testdata/qaware_agent
+QAWARE_INPUT ?= $(QAWARE_TESTDATA)_response_buzzword_denied.json
+
+.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied eval-qaware-reasons compile-wasm extract-wasm test test-crm test-authz test-github-mcp test-clc26-agent test-qaware-agent
 
 python-sync:
 	$(UV) sync
@@ -82,14 +88,19 @@ eval-github-mcp-write:
 eval-github-mcp-denied:
 	$(OPA) eval --format pretty --data $(GITHUB_MCP_POLICY) --input $(GITHUB_MCP_DENIED_INPUT) $(GITHUB_MCP_QUERY)
 
+eval-qaware-reasons:
+	$(OPA) eval --format pretty --data $(QAWARE_POLICY) --input $(QAWARE_INPUT) $(QAWARE_REASONS_QUERY)
+
 compile-wasm:
 	@mkdir -p $(WASM_DIR)
 	@for policy in $(REGO_POLICIES); do \
 		package=$$(awk '/^package / { print $$2; exit }' "$$policy"); \
 		entrypoint=$$(printf '%s' "$$package" | tr . /)/allow; \
+		extra=""; \
+		if grep -q '^deny_reasons ' "$$policy"; then extra="--entrypoint $$(printf '%s' "$$package" | tr . /)/deny_reasons"; fi; \
 		bundle=$$(basename "$$policy" .rego).tar.gz; \
 		echo "Compiling $$policy -> $(WASM_DIR)/$$bundle ($$entrypoint)"; \
-		$(OPA) build --target wasm --entrypoint "$$entrypoint" --output "$(WASM_DIR)/$$bundle" "$$policy"; \
+		$(OPA) build --target wasm --entrypoint "$$entrypoint" $$extra --output "$(WASM_DIR)/$$bundle" "$$policy"; \
 	done
 
 extract-wasm: compile-wasm
@@ -100,7 +111,7 @@ extract-wasm: compile-wasm
 		tar -xOzf "$$bundle" /policy.wasm > "$$output"; \
 	done
 
-test: test-crm test-authz test-github-mcp test-clc26-agent
+test: test-crm test-authz test-github-mcp test-clc26-agent test-qaware-agent
 	@echo "Policy tests passed"
 
 test-crm:
@@ -124,3 +135,11 @@ test-clc26-agent:
 	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_response_denied.json $(CLC26_QUERY))" = "false"
 	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_tool_allowed.json $(CLC26_QUERY))" = "true"
 	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_tool_denied.json $(CLC26_QUERY))" = "false"
+
+# Test inputs encode the expected decision in their file name: *_allowed.json or *_denied.json.
+test-qaware-agent:
+	@set -e; for input in $(QAWARE_TESTDATA)_*_allowed.json $(QAWARE_TESTDATA)_*_denied.json; do \
+		case "$$input" in *_allowed.json) expected=true ;; *) expected=false ;; esac; \
+		actual=$$($(OPA) eval --format raw --data $(QAWARE_POLICY) --input "$$input" $(QAWARE_QUERY)); \
+		if [ "$$actual" != "$$expected" ]; then echo "FAIL $$input: expected $$expected, got $$actual"; exit 1; fi; \
+	done

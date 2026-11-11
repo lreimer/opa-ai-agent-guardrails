@@ -1,0 +1,6 @@
+{
+  "phase": "after_model",
+  "agent": "qaware_agent",
+  "model": "gemini-3.8-flash",
+  "text": "As a 10x rockstar ninja you will leverage holistic synergies to move the needle."
+}

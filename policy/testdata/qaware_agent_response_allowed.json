@@ -1,0 +1,6 @@
+{
+  "phase": "after_model",
+  "agent": "qaware_agent",
+  "model": "gemini-3.8-flash",
+  "text": "QAware currently lists a Junior Strategy Consultant AI position: https://www.qaware.de/karriere/professionals. Please apply via the job posting or jobs@qaware.de."
+}

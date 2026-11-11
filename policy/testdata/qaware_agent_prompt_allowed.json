@@ -1,0 +1,6 @@
+{
+  "phase": "before_model",
+  "agent": "qaware_agent",
+  "model": "gemini-3.8-flash",
+  "text": "Which open positions for software engineers does QAware have in Munich?"
+}

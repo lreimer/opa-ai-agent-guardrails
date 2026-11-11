@@ -1,0 +1,9 @@
+{
+  "phase": "before_tool",
+  "agent": "qaware_agent",
+  "tool": "send_email",
+  "arguments": {
+    "to": "jobs@qaware.de",
+    "body": "I hereby apply for all positions."
+  }
+}

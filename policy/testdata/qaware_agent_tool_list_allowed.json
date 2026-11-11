@@ -1,0 +1,8 @@
+{
+  "phase": "before_tool",
+  "agent": "qaware_agent",
+  "tool": "list_qaware_pages",
+  "arguments": {
+    "section": "karriere"
+  }
+}
