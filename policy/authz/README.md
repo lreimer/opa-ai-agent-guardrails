@@ -33,3 +33,32 @@ make eval-authz-admin   # or eval-authz-owner / eval-authz-denied
 Test inputs: [admin_file_admin.json](../testdata/admin_file_admin.json),
 [admin_file_owner.json](../testdata/admin_file_owner.json),
 [admin_file_denied.json](../testdata/admin_file_denied.json).
+
+## OPA Server REST API
+
+Start OPA with this policy loaded:
+
+```bash
+opa run --server --addr 127.0.0.1:8181 policy/authz/admin_file.rego
+```
+
+In another terminal, POST the existing fixtures to the data API. The REST request wraps the policy input in an
+`input` field; `jq` adds that wrapper without changing the fixtures used by `opa eval`.
+
+```bash
+for fixture in policy/testdata/admin_file_admin.json \
+               policy/testdata/admin_file_owner.json \
+               policy/testdata/admin_file_denied.json; do
+  printf '%s: ' "$fixture"
+  jq -c '{input: .}' "$fixture" |
+    curl --silent --show-error --fail-with-body \
+      -H 'Content-Type: application/json' \
+      --data-binary @- \
+      http://127.0.0.1:8181/v1/data/authz/allow
+  printf '\n'
+done
+```
+
+The responses contain `{"result":true}` for the admin and owner fixtures and `{"result":false}` for the denied
+fixture. The REST API returns the same policy decision as `opa eval`, but the caller now depends on the OPA server
+being reachable.
