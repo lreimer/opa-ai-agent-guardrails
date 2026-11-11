@@ -26,7 +26,11 @@ GITHUB_MCP_READ_ALLOWED_INPUT := policy/testdata/github_mcp_read_allowed.json
 GITHUB_MCP_WRITE_ALLOWED_INPUT := policy/testdata/github_mcp_write_allowed.json
 GITHUB_MCP_DENIED_INPUT := policy/testdata/github_mcp_denied.json
 
-.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm extract-wasm test test-crm test-authz test-github-mcp
+CLC26_POLICY := policy/agents/clc26/clc26_agent.rego
+CLC26_QUERY := data.agents.clc26.allow
+CLC26_TESTDATA := policy/testdata/clc26_agent
+
+.PHONY: python-sync python-check adk-web rust-build rust-check-policy-allowed rust-check-policy-write rust-check-policy-denied test-rust-hook eval-allowed eval-denied eval-authz-admin eval-authz-owner eval-authz-denied eval-github-mcp-read eval-github-mcp-write eval-github-mcp-denied compile-wasm extract-wasm test test-crm test-authz test-github-mcp test-clc26-agent
 
 python-sync:
 	$(UV) sync
@@ -34,7 +38,7 @@ python-sync:
 python-check: python-sync
 	$(UV) run python -c "from opapywasm import OpaWasmPolicy; print('opa-py-wasm ready')"
 
-adk-web: python-sync
+adk-web: python-sync extract-wasm
 	$(UV) run adk web --port $(ADK_WEB_PORT) $(ADK_AGENTS_DIR)
 
 rust-build:
@@ -96,7 +100,7 @@ extract-wasm: compile-wasm
 		tar -xOzf "$$bundle" /policy.wasm > "$$output"; \
 	done
 
-test: test-crm test-authz test-github-mcp
+test: test-crm test-authz test-github-mcp test-clc26-agent
 	@echo "Policy tests passed"
 
 test-crm:
@@ -113,3 +117,10 @@ test-github-mcp:
 	@test "$$($(OPA) eval --format raw --data $(GITHUB_MCP_POLICY) --input $(GITHUB_MCP_READ_ALLOWED_INPUT) $(GITHUB_MCP_QUERY))" = "true"
 	@test "$$($(OPA) eval --format raw --data $(GITHUB_MCP_POLICY) --input $(GITHUB_MCP_WRITE_ALLOWED_INPUT) $(GITHUB_MCP_QUERY))" = "true"
 	@test "$$($(OPA) eval --format raw --data $(GITHUB_MCP_POLICY) --input $(GITHUB_MCP_DENIED_INPUT) $(GITHUB_MCP_QUERY))" = "false"
+
+test-clc26-agent:
+	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_prompt_allowed.json $(CLC26_QUERY))" = "true"
+	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_prompt_denied.json $(CLC26_QUERY))" = "false"
+	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_response_denied.json $(CLC26_QUERY))" = "false"
+	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_tool_allowed.json $(CLC26_QUERY))" = "true"
+	@test "$$($(OPA) eval --format raw --data $(CLC26_POLICY) --input $(CLC26_TESTDATA)_tool_denied.json $(CLC26_QUERY))" = "false"

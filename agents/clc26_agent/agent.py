@@ -3,9 +3,11 @@
 import os
 
 from google.adk.agents import Agent
+from google.adk.apps import App
 from google.adk.tools import google_search
 from google.adk.tools.agent_tool import AgentTool
 
+from .opa_plugin import OpaWasmGuardrailsPlugin
 from .tools import fetch_clc_page
 
 MODEL = os.getenv("CLC26_AGENT_MODEL", "gemini-3.8-flash")
@@ -50,4 +52,11 @@ How to answer:
 - Always cite the source URLs you used.
 """,
     tools=[fetch_clc_page, AgentTool(agent=web_search_agent)],
+)
+
+# The plugin applies to all agents of this app, including the wrapped web search agent.
+app = App(
+    name="clc26_agent",
+    root_agent=root_agent,
+    plugins=[OpaWasmGuardrailsPlugin()],
 )

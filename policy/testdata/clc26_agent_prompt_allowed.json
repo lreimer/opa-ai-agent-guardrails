@@ -1,0 +1,6 @@
+{
+  "phase": "before_model",
+  "agent": "clc26_agent",
+  "model": "gemini-3.8-flash",
+  "text": "Which talks about platform engineering are on 11 November?"
+}
