@@ -49,3 +49,35 @@ make eval-allowed  # or eval-denied
 Test inputs: [claims_agent_crm_allowed.json](../../testdata/claims_agent_crm_allowed.json),
 [claims_agent_crm_denied.json](../../testdata/claims_agent_crm_denied.json),
 [claims_agent_crm_envoy_allowed.json](../../testdata/claims_agent_crm_envoy_allowed.json).
+
+## OPA Server REST API
+
+Start OPA with the CRM policy loaded:
+
+```bash
+opa run --server --addr 127.0.0.1:8181 policy/crm/claims_agent/claims_agent_crm.rego
+```
+
+In another terminal, ask OPA to authorize each tool call before sending it to the CRM. The API request wraps each
+fixture as `input`; `jq` preserves the fixture's direct or Envoy-shaped input.
+
+```bash
+for fixture in policy/testdata/claims_agent_crm_allowed.json \
+               policy/testdata/claims_agent_crm_denied.json \
+               policy/testdata/claims_agent_crm_envoy_allowed.json; do
+  printf '%s: ' "$fixture"
+  jq -c '{input: .}' "$fixture" |
+    curl --silent --show-error --fail-with-body \
+      -H 'Content-Type: application/json' \
+      --data-binary @- \
+      http://127.0.0.1:8181/v1/data/crm/claims_agent/allow
+  printf '\n'
+done
+```
+
+The direct allowed and Envoy-shaped fixtures return `{"result":true}`; the delete-customer fixture returns
+`{"result":false}`. A calling application should proceed with the CRM tool only when the response result is exactly
+`true`. A denied result, an OPA error, or a timeout must prevent the tool call.
+
+This is an application-to-OPA REST check; it does not execute the CRM tool. The separate [Envoy demo](../../../envoy)
+uses OPA's `ext_authz` gRPC plugin to authorize proxied HTTP requests rather than calling the REST data API.
